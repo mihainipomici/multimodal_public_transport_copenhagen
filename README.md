@@ -1,4 +1,4 @@
-msc_thesis_dtu
+Resilient Multimodal Transportation in Copenhagen: A Comprehensive Network Dynamics and Demand Forecasting Analysis
 ==============================
 
 This research dives into the transportation landscape of Copenhagen, focusing on how various modes like trains, shared cars, and bikes work together. We'll map out the connections between these modes and try to predict their future usage based on current trends. Our approach will combine standard data analysis techniques with machine learning to make these forecasts
