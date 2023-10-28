@@ -31,4 +31,23 @@ def get_zone_info(shpfile_path, longitude, latitude)->dict:
     
     return zoneInfo
 
+# calculate haversine distance in gm_data given startpositionlat, startpositionlng, endpositionlat, endpositionlng
+def haversine_distance(startLat, startLng, endLat, endLng):
+    # approximate radius of earth in km
+    R = 6373.0
+
+    startLat = np.radians(startLat)
+    startLng = np.radians(startLng)
+    endLat = np.radians(endLat)
+    endLng = np.radians(endLng)
+
+    dlon = endLng - startLng
+    dlat = endLat - startLat
+
+    a = np.sin(dlat / 2)**2 + np.cos(startLat) * np.cos(endLat) * np.sin(dlon / 2)**2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+    distance = R * c
+    return distance
+
 
