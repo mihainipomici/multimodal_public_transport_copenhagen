@@ -11,6 +11,7 @@ def get_zone_info(shpfile_path, longitude, latitude)->dict:
     from pyproj import Proj, transform, Transformer
     from shapely.geometry import Point, Polygon, shape
     import geopandas as gpd
+    import numpy as np
 
     # read shapefile
     gdf = gpd.read_file(shpfile_path)
@@ -33,6 +34,7 @@ def get_zone_info(shpfile_path, longitude, latitude)->dict:
 
 # calculate haversine distance in gm_data given startpositionlat, startpositionlng, endpositionlat, endpositionlng
 def haversine_distance(startLat, startLng, endLat, endLng):
+    import numpy as np
     # approximate radius of earth in km
     R = 6373.0
 
