@@ -1,0 +1,2 @@
+# to run the otp server 
+java -Xmx4G -jar otp-2.4.0-shaded.jar --build --serve .
