@@ -274,3 +274,52 @@ def main_concurrent(df, num_itineraries):
     for index, data in results.items():
         for key, value in data.items():
             df.at[index, key] = value
+
+
+# The main function to process the DataFrame concurrently and update the results
+def main_concurrent_sn(df, num_itineraries):
+    """
+    Process itineraries concurrently using a thread pool executor.
+
+    Args:
+        df (pandas.DataFrame): The input DataFrame containing itinerary data.
+        num_itineraries (int): The number of itineraries to fetch and process for each row.
+
+    Returns:
+        None
+    """
+    # Temporary dictionary to hold the results
+    results = {}
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        # Prepare and submit all futures
+        futures_to_index = {
+            executor.submit(
+                fetch_and_process_itinerary_concurrent,
+                row['LatitudeStart'], row['LongitudeStart'],
+                row['LatitudeEnd'], row['LongitudeEnd'],
+                row['StartTimeUpdated'],
+                num_itineraries
+            ): index for index, row in df.iterrows()
+        }
+        
+        # Process futures as they complete and show progress
+        for future in tqdm(as_completed(futures_to_index), total=len(futures_to_index), desc="Processing itineraries"):
+            index = futures_to_index[future]
+            try:
+                results[index] = future.result()
+            except Exception as exc:
+                print(f'Row {index} generated an exception: {exc}')
+                results[index] = {
+                    "TotalDurationMin": np.nan,
+                    "TripDistanceKm": np.nan,
+                    "TotalWalkingTimeMin": np.nan,
+                    "TotalTransitTimeMin": np.nan,
+                    "Changes": np.nan,
+                    'PickupStationProximity': np.nan,
+                    "DropoffStationProximity": np.nan
+                }
+    
+    # Update the DataFrame outside the thread pool
+    for index, data in results.items():
+        for key, value in data.items():
+            df.at[index, key] = value
