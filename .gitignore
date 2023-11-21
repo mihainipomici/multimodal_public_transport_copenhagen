@@ -89,3 +89,4 @@ target/
 .mypy_cache/
 data/processed/*
 data/raw/*
+data/otp/*
