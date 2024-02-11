@@ -277,7 +277,7 @@ def main_concurrent(df, num_itineraries):
 
 
 # The main function to process the DataFrame concurrently and update the results
-def main_concurrent_sn(df, num_itineraries):
+def main_concurrent_sn_gm(df, num_itineraries):
     """
     Process itineraries concurrently using a thread pool executor.
 
@@ -317,6 +317,97 @@ def main_concurrent_sn(df, num_itineraries):
                     "Changes": np.nan,
                     'PickupStationProximity': np.nan,
                     "DropoffStationProximity": np.nan
+                }
+    
+    # Update the DataFrame outside the thread pool
+    for index, data in results.items():
+        for key, value in data.items():
+            df.at[index, key] = value
+
+
+
+
+def fetch_and_process_fastest_itinerary_car(response):
+    """
+    Fetches and processes the fastest itinerary from the response.
+
+    Args:
+        response (dict): The response containing itinerary information.
+
+    Returns:
+        dict: A dictionary containing the processed details of the fastest itinerary.
+            The dictionary has the following keys:
+            - "TotalDurationMin": The total duration of the itinerary in minutes.
+            - "TripDistanceKm": The total distance of the itinerary in kilometers.
+            - "TotalWalkingTimeMin": The total walking time of the itinerary in minutes.
+            - "TotalTransitTimeMin": The total transit time of the itinerary in minutes.
+            - "Changes": The number of mode changes in the itinerary.
+            - "PickupStationProximity": The distance to the pickup station in meters, or 0 if not available.
+            - "DropoffStationProximity": The distance to the dropoff station in meters, or 0 if not available.
+    """
+    try:
+        # Extract itineraries and find the fastest one
+        itineraries = response['plan']['itineraries']
+        fastest_itinerary = min(itineraries, key=lambda x: x['duration'])
+        total_distance = sum(leg['distance'] for leg in fastest_itinerary['legs']) / 1000
+        # Construct the details dictionary
+        details = {
+            "CarDurationMin": fastest_itinerary['duration'] / 60.0,
+            "CarDistanceKm": total_distance,
+        }
+        return details
+    except KeyError as e:
+        print(f"Error processing itinerary: {e}")
+        # Return NaN values if there's an error in the response format
+        return {
+            "CarDurationMin": np.nan,
+            "CarDistanceKm": np.nan,
+        }
+    
+
+
+
+# This function is a wrapper around the 'fetch_and_process_fastest_itinerary' for concurrent processing
+def fetch_and_process_itinerary_concurrent_car(start_lat, start_lon, end_lat, end_lon, start_time, mode, num_itineraries):
+    response = get_top_itineraries(start_lat, start_lon, end_lat, end_lon, start_time, mode=mode, num_itineraries=num_itineraries)
+    return fetch_and_process_fastest_itinerary_car(response)
+
+# The main function to process the DataFrame concurrently and update the results
+def main_concurrent_sn_gm_car(df, num_itineraries, mode):
+    """
+    Process itineraries concurrently using a thread pool executor.
+
+    Args:
+        df (pandas.DataFrame): The input DataFrame containing itinerary data.
+        num_itineraries (int): The number of itineraries to fetch and process for each row.
+
+    Returns:
+        None
+    """
+    # Temporary dictionary to hold the results
+    results = {}
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        # Prepare and submit all futures
+        futures_to_index = {
+            executor.submit(
+                fetch_and_process_itinerary_concurrent,
+                row['LatitudeStart'], row['LongitudeStart'],
+                row['LatitudeEnd'], row['LongitudeEnd'],
+                row['StartTimeUpdated'], mode,
+                num_itineraries
+            ): index for index, row in df.iterrows()
+        }
+        
+        # Process futures as they complete and show progress
+        for future in tqdm(as_completed(futures_to_index), total=len(futures_to_index), desc="Processing itineraries"):
+            index = futures_to_index[future]
+            try:
+                results[index] = future.result()
+            except Exception as exc:
+                print(f'Row {index} generated an exception: {exc}')
+                results[index] = {
+                    "CarDurationMin": np.nan,
+                    "CarDistanceKm": np.nan,
                 }
     
     # Update the DataFrame outside the thread pool
